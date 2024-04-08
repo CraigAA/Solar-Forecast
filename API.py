@@ -1,6 +1,5 @@
 Site="38c7-5747-151e-b77e" # Angaston location key
 http="https://api.solcast.com.au/weather_sites/" + Site + "/forecasts?format=json&api_key=" + APIKey
-print http
 weather_json = system.net.httpGet(http)
 weather_json_decoded = system.util.jsonDecode(weather_json)
 
@@ -17,6 +16,12 @@ for hour in weather_json_decoded["forecasts"]: #Pick the right data and store
 		dateInput=system.date.parse(dateInput,'yyyy-MM-dd HH:mm:ss')
 		dateInput=system.date.addMinutes(dateInput,(9*60+30)) #ACST = +9:30 UTC
 		hour_forecast.append([dateInput,hour["air_temp"],hour['ghi']])
+		q='select * from solar_forecast where forecast_time = ?' 
+		existing=system.db.runPrepQuery(q, [dateInput],'nas_development')
+		if len(existing)!=0:
+			q='update solar_forecast set ghi=?,ebh=?,dni=?,cloud_opacity=?, t_stamp=CURRENT_TIMESTAMP where forecast_time=?'
+			system.db.runPrepUpdate(q,[hour['ghi'],hour['ebh'],hour['dni'],hour['cloud_opacity']/10,dateInput],'nas_development')
+			print 'update forecast '+str(dateInput)
 		q='insert into solar_forecast (forecast_time, ghi,ebh,dni,cloud_opacity) values (?,?,?,?,?)'
 		system.db.runPrepUpdate(q, [dateInput , hour['ghi'],hour['ebh'],hour['dni'],hour['cloud_opacity']/10],'nas_development')
 	count+=1
